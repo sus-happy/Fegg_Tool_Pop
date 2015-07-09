@@ -40,7 +40,6 @@
 class Tool_Pop
 {
     private
-        $_app = NULL,
         $server = array(
             'HOST' => '',
             'USER' => '',
@@ -67,9 +66,45 @@ class Tool_Pop
      */
     public function __construct()
     {
-        // アプリケーションオブジェクト
-        $this->_app = &FEGG_getInstance();
-        $this->attached_save_path = FEGG_CODE_DIR.'/data/cache/mail_attached';
+        // Feggから呼ばれた時のみ添付ファイルの保存ディレクトリを初期設定する
+        if( defined( 'FEGG_CODE_DIR' ) ) {
+            $this->attached_save_path = FEGG_CODE_DIR.'/data/cache/mail_attached';
+            if(! is_dir( $this->attached_save_path ) ) {
+                mkdir( $this->attached_save_path, 0777, TRUE );
+            }
+        }
+    }
+
+    /**
+     * 添付ファイルの添付ディレクトリの指定
+     *
+     * @param string $dir
+     */
+    public function setAttachedSavePath( $dir )
+    {
+        if(! is_dir( $dir ) || ! is_writable( $dir ) ) {
+            throw new Exception( 'Permission Error: "'.$dir.'" is Not Writable.' );
+        }
+
+        $this->attached_save_path = $dir;
+    }
+
+    /**
+     * 改行コードの指定
+     *
+     * @param string $br
+     */
+    public function setBr( $br )
+    {
+        if(
+            $br !== "\n" &&
+            $br !== "\r" &&
+            $br !== "\r\n"
+        ) {
+            throw new Exception( 'Not CR/LF.' );
+        }
+
+        $this->br = $br;
     }
 
     /**
@@ -144,8 +179,40 @@ class Tool_Pop
      */
     public function clean()
     {
-        $file = $this->_app->getClass( 'Tool/File' );
-        $file->removeDirectory( $this->attached_save_path, FALSE );
+        $this->removeDirectory( $this->attached_save_path, FALSE );
+    }
+
+    /**
+     * ディレクトリ削除
+     * via: Tool/File
+     *
+     * @param string  $directory
+     * @param boolean $rmdir TRUEの時は指定ディレクトリを削除する（初期値）
+     */
+    private function removeDirectory( $directory, $rmdir = TRUE )
+    {
+        if( is_dir( $directory ) ) {
+            if( $handle = opendir( $directory ) ) {
+                while( ( $item = readdir( $handle ) ) !== false) {
+
+                    if( $item == "." || $item == ".." ) {
+                        continue;
+                    }
+
+                    if( is_dir( $directory . "/" . $item ) ) {
+                        // ディレクトリであれば自身を再帰呼出する
+                        $this->removeDirectory( $directory . "/" . $item );
+                    } else {
+                        unlink( $directory . "/" . $item );
+                    }
+                }
+                closedir( $handle );
+            }
+
+            if( $rmdir ) {
+                rmdir( $directory );
+            }
+        }
     }
 
     /**
