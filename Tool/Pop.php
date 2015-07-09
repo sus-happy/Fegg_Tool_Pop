@@ -545,7 +545,7 @@ class Tool_Pop
         // ファイル名の取得
         $filename = 'dummy.dat';
         $content_type = implode( '', $attached['header']['CONTENT-TYPE'] );
-        if( preg_match( '/name=(.*)$/', $content_type, $matches ) ) {
+        if( preg_match( '/name=(.*?)(;|$)/', $content_type, $matches ) ) {
             $filename = str_replace( array( '"', "'" ), '', $matches[1] );
         }
         $filepath = $this->attached_save_path.'/'.$filename;
